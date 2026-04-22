@@ -1,0 +1,56 @@
+name: Build and Deploy
+
+# Trigger on every push to main, or manually from the Actions tab
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Required permissions to deploy to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only allow one deployment at a time; cancel in-progress if a new push arrives
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Optional: Node/npm build step ──────────────────────────
+      # Remove this block if your site is plain HTML with no build step
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build           # outputs to dist/ by default
+
+      # ── Upload the built site as a Pages artifact ───────────────
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/               # change to _site/, public/, etc. if needed
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
